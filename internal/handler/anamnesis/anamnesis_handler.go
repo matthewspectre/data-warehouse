@@ -95,3 +95,65 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+// ETLToWarehouse menangani POST /anamnesis/etl
+// Menarik data dari rsA dan rsB lalu menyimpan ke database `data_warehouse`.
+func (h *Handler) ETLToWarehouse(c *gin.Context) {
+	res, err := h.uc.ETLToWarehouse()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "etl completed",
+		"inserted_rs_a": res.InsertedRSA,
+		"inserted_rs_b": res.InsertedRSB,
+	})
+}
+
+// GetWarehouse menangani GET /anamnesis/warehouse
+// Mengambil data hasil ETL dari database `data_warehouse`.
+func (h *Handler) GetWarehouse(c *gin.Context) {
+	nik := c.Query("NIK")
+	var nikPtr *string
+	if nik != "" {
+		n := nik
+		nikPtr = &n
+	}
+
+	list, err := h.uc.GetAllWarehouse(nikPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rows := make([]AnamnesisWarehouseResponse, 0, len(list))
+	for _, data := range list {
+		rows = append(rows, AnamnesisWarehouseResponse{
+			Source:                data.Source,
+			IDAnamnesis:           data.IDAnamnesis,
+			IDPasien:              data.IDPasien,
+			NamaPasien:            data.NamaPasien,
+			Text:                  data.Text,
+			DateMake:              data.DateMake,
+			DateUpdate:            data.DateUpdate,
+			IDDataKlinik:          data.IDDataKlinik,
+			RiwayatPengobatan:     data.RiwayatPengobatan,
+			RiwayatKeluarga:       data.RiwayatKeluarga,
+			RiwayatPenyakitDahulu: data.RiwayatPenyakitDahulu,
+			RiwayatPenyakitLain:   data.RiwayatPenyakitLain,
+			RiwayatAlergi:         data.RiwayatAlergi,
+			StatusKehamilan:       data.StatusKehamilan,
+			KeluhanUtama:          data.KeluhanUtama,
+			KeluhanTambahan:       data.KeluhanTambahan,
+			Visible:               data.Visible,
+		})
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].DateMake.After(rows[j].DateMake)
+	})
+
+	c.JSON(http.StatusOK, GetWarehouseResponse{Data: rows})
+}

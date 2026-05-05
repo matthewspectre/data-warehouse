@@ -45,6 +45,8 @@ func RegisterAnamnesisRoutes(r *gin.Engine, handler *hanamnesis.Handler) {
 	group := r.Group("/anamnesis")
 
 	group.GET("/", handler.GetAll)
+	group.GET("/warehouse", handler.GetWarehouse)
+	group.POST("/etl", handler.ETLToWarehouse)
 }
 
 // RegisterAuthRoutes mendaftarkan endpoint /auth ke Gin router.

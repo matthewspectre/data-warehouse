@@ -12,6 +12,13 @@ import (
 type Usecase interface {
 	GetAll() ([]*entity.Anamnesis, error)
 	GetAllB() ([]*entity.AnamnesisB, error)
+	GetAllWarehouse(nik *string) ([]*entity.AnamnesisWarehouse, error)
+	ETLToWarehouse() (ETLResult, error)
+}
+
+type ETLResult struct {
+	InsertedRSA int64
+	InsertedRSB int64
 }
 
 // usecase adalah implementasi konkret dari Usecase.
@@ -32,4 +39,30 @@ func (u *usecase) GetAll() ([]*entity.Anamnesis, error) {
 
 func (u *usecase) GetAllB() ([]*entity.AnamnesisB, error) {
 	return u.repo.GetAllB()
+}
+
+func (u *usecase) GetAllWarehouse(nik *string) ([]*entity.AnamnesisWarehouse, error) {
+	return u.repo.GetAllWarehouse(nik)
+}
+
+func (u *usecase) ETLToWarehouse() (ETLResult, error) {
+	rsA, err := u.repo.GetAll()
+	if err != nil {
+		return ETLResult{}, err
+	}
+	rsB, err := u.repo.GetAllB()
+	if err != nil {
+		return ETLResult{}, err
+	}
+
+	insertedA, err := u.repo.UpsertWarehouseA(rsA)
+	if err != nil {
+		return ETLResult{}, err
+	}
+	insertedB, err := u.repo.UpsertWarehouseB(rsB)
+	if err != nil {
+		return ETLResult{}, err
+	}
+
+	return ETLResult{InsertedRSA: insertedA, InsertedRSB: insertedB}, nil
 }
