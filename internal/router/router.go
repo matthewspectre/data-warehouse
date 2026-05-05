@@ -44,14 +44,7 @@ func RegisterAntrianRoutes(r *gin.Engine, handler *hantrian.Handler) {
 func RegisterAnamnesisRoutes(r *gin.Engine, handler *hanamnesis.Handler) {
 	group := r.Group("/anamnesis")
 
-	group.POST("/", handler.Create)
 	group.GET("/", handler.GetAll)
-	group.GET("/:id_pasien", handler.GetByID)
-
-	// Soft-hide endpoint
-	group.PATCH("/:id/hide", handler.Hide)
-	// Generic update (partial)
-	group.PATCH("/:id", handler.Update)
 }
 
 // RegisterAuthRoutes mendaftarkan endpoint /auth ke Gin router.

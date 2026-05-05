@@ -64,49 +64,45 @@ func toEntity(m *model.AnamnesisModel) *entity.Anamnesis {
 	}
 }
 
-// Create menyimpan data anamnesis baru.
-func (r *RepositoryMySQL) Create(data *entity.Anamnesis) error {
-	mdl := toModel(data)
-	return r.db.Create(mdl).Error
-}
-
-// GetByID mengambil satu data anamnesis berdasarkan `id_anamnesis` (ambil baris pertama).
-func (r *RepositoryMySQL) GetByID(idAnamnesis int) (*entity.Anamnesis, error) {
-	ctx := context.Background()
-	type modelWithName struct {
-		model.AnamnesisModel
-		NamaPasien string `gorm:"column:nama_pasien"`
+func toEntityB(m *model.AnamnesisBModel) *entity.AnamnesisB {
+	if m == nil {
+		return nil
 	}
-	var aw modelWithName
-	if err := r.db.WithContext(ctx).
-		Table("anamnesis a").
-		Select("a.*, p.name AS nama_pasien").
-		Joins("LEFT JOIN patients p ON p.id = a.id_pasien").
-		Where("a.id_anamnesis = ?", idAnamnesis).
-		First(&aw).Error; err != nil {
-		return nil, err
+	return &entity.AnamnesisB{
+		ID:                    m.ID,
+		IDPasien:              m.IDPasien,
+		IDDokter:              m.IDDokter,
+		Text:                  m.Text,
+		DateMake:              m.DateMake,
+		DateUpdate:            m.DateUpdate,
+		IDDataKlinik:          m.IDDataKlinik,
+		RiwayatPengobatan:     m.RiwayatPengobatan,
+		RiwayatKeluarga:       m.RiwayatKeluarga,
+		RiwayatPenyakitDahulu: m.RiwayatPenyakitDahulu,
+		RiwayatPenyakitLain:   m.RiwayatPenyakitLain,
+		RiwayatAlergi:         m.RiwayatAlergi,
+		StatusKehamilan:       m.StatusKehamilan,
+		KeluhanUtama:          m.KeluhanUtama,
+		KeluhanTambahan:       m.KeluhanTambahan,
+		Visible:               m.Visible,
 	}
-	ent := toEntity(&aw.AnamnesisModel)
-	ent.NamaPasien = aw.NamaPasien
-	return ent, nil
 }
 
 // GetAll mengambil semua data anamnesis yang masih visible.
 // Jika `idDokter` atau `idPasien` tidak nil, hasil akan difilter berdasarkan kolom terkait.
-func (r *RepositoryMySQL) GetAll(idDokter *int, idPasien *int) ([]*entity.Anamnesis, error) {
+func (r *RepositoryMySQL) GetAll() ([]*entity.Anamnesis, error) {
 	ctx := context.Background()
 	type modelWithName struct {
 		model.AnamnesisModel
 		NamaPasien string `gorm:"column:nama_pasien"`
 	}
 	var awls []modelWithName
-	q := r.db.WithContext(ctx).Table("anamnesis a").Select("a.*, p.name AS nama_pasien").Joins("LEFT JOIN patients p ON p.id = a.id_pasien").Where("a.visible = ?", 1)
-	if idDokter != nil {
-		q = q.Where("a.id_dokter = ?", *idDokter)
-	}
-	if idPasien != nil {
-		q = q.Where("a.id_pasien = ?", *idPasien)
-	}
+	q := r.db.WithContext(ctx).
+		Table("anamnesis a").
+		Select("a.*, p.name AS nama_pasien").
+		Joins("LEFT JOIN patients p ON p.id = a.id_pasien").
+		Where("a.visible = ?", 1)
+
 	if err := q.Find(&awls).Error; err != nil {
 		return nil, err
 	}
@@ -119,15 +115,30 @@ func (r *RepositoryMySQL) GetAll(idDokter *int, idPasien *int) ([]*entity.Anamne
 	return res, nil
 }
 
-// Update memperbarui kolom pada baris anamnesis yang ditentukan oleh id_anamnesis.
-func (r *RepositoryMySQL) Update(idAnamnesis int, updates map[string]interface{}) error {
+// GetAllB mengambil semua data anamnesis dari database rme-b yang masih visible.
+// NOTE: Nama database mengandung tanda '-' sehingga harus di-quote dengan backticks.
+func (r *RepositoryMySQL) GetAllB() ([]*entity.AnamnesisB, error) {
 	ctx := context.Background()
-	if updates == nil || len(updates) == 0 {
-		return nil
+	type modelWithName struct {
+		model.AnamnesisBModel
+		NamaPasien string `gorm:"column:nama_pasien"`
 	}
-	// Pastikan kolom yang diupdate sesuai nama kolom di DB (snake_case)
-	return r.db.WithContext(ctx).
-		Model(&model.AnamnesisModel{}).
-		Where("id_anamnesis = ?", idAnamnesis).
-		Updates(updates).Error
+	var rows []modelWithName
+
+	q := r.db.WithContext(ctx).
+		Table("`rme-b`.anamnesis a").
+		Select("a.*, p.name AS nama_pasien").
+		Joins("LEFT JOIN `rme-b`.patients p ON p.id = a.id_pasien").
+		Where("a.visible = ?", 1)
+
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	res := make([]*entity.AnamnesisB, 0, len(rows))
+	for i := range rows {
+		ent := toEntityB(&rows[i].AnamnesisBModel)
+		ent.NamaPasien = rows[i].NamaPasien
+		res = append(res, ent)
+	}
+	return res, nil
 }
