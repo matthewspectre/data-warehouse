@@ -19,6 +19,21 @@
                 "DB_PORT": "3306",
                 "DB_NAME": "rme"
             }
+        },
+        {
+            "name": "Launch Package - RS B",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "buildFlags": "-buildvcs=false",
+            "env": {
+                "DB_USER": "root",
+                "DB_PASS": "",
+                "DB_HOST": "localhost",
+                "DB_PORT": "3306",
+                "DB_NAME": "rme-b"
+            }
         }
     ]
 }
