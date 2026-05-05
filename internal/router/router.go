@@ -86,13 +86,10 @@ func RegisterPoliRoutes(r *gin.Engine, handler *hpoli.Handler) {
 // RegisterPemeriksaanVitalRoutes mendaftarkan endpoint /pemeriksaan_vital
 func RegisterPemeriksaanVitalRoutes(r *gin.Engine, handler *hpv.Handler) {
 	group := r.Group("/pemeriksaan_vital")
-	group.POST("/", handler.Create)
 	group.GET("/", handler.GetAll)
-	group.GET("/:id", handler.GetByID)
-	// Generic update (partial)
-	group.PATCH("/:id", handler.Update)
-	// Soft-hide endpoint
-	group.PATCH("/:id/hide", handler.Hide)
+	group.GET("/b", handler.GetAllB)
+	group.GET("/warehouse", handler.GetWarehouse)
+	group.POST("/etl", handler.ETLToWarehouse)
 }
 
 // RegisterPemeriksaanLaboratoriumRoutes mendaftarkan endpoint /pemeriksaan_laboratorium

@@ -5,8 +5,9 @@ import (
 )
 
 type Repository interface {
-	Create(data *entity.PemeriksaanVital) error
-	GetByID(id int) (*entity.PemeriksaanVital, error)
 	GetAll(idPasien *int, idDokter *int) ([]*entity.PemeriksaanVital, error)
-	Update(id int, updates map[string]interface{}) error
+	GetAllB(idPasien *int, idDokter *int) ([]*entity.PemeriksaanVitalB, error)
+	GetAllWarehouse(nik *string) ([]*entity.PemeriksaanVitalWarehouse, error)
+	UpsertWarehouseA(rows []*entity.PemeriksaanVital) (int64, error)
+	UpsertWarehouseB(rows []*entity.PemeriksaanVitalB) (int64, error)
 }

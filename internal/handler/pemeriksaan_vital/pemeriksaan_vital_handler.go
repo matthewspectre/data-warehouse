@@ -3,9 +3,7 @@ package pemeriksaanvital
 import (
 	"net/http"
 	"strconv"
-	"time"
 
-	entity "rme/internal/entity/pemeriksaan_vital"
 	usecase "rme/internal/usecase/pemeriksaan_vital"
 
 	"github.com/gin-gonic/gin"
@@ -17,93 +15,6 @@ type Handler struct {
 
 func NewHandler(uc usecase.Usecase) *Handler {
 	return &Handler{uc: uc}
-}
-
-// Create menangani POST /pemeriksaan_vital
-func (h *Handler) Create(c *gin.Context) {
-	var req PemeriksaanVitalCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	const layout = "2006-01-02 15:04:05"
-	var dateMake, dateUpdate time.Time
-	var err error
-	if req.DateMake != "" {
-		dateMake, err = time.Parse(layout, req.DateMake)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dateMake format"})
-			return
-		}
-	} else {
-		dateMake = time.Now()
-	}
-	if req.DateUpdate != "" {
-		dateUpdate, err = time.Parse(layout, req.DateUpdate)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dateUpdate format"})
-			return
-		}
-	} else {
-		dateUpdate = dateMake
-	}
-
-	data := &entity.PemeriksaanVital{
-		IDPasien:       req.IDPasien,
-		IDDokter:       req.IDDokter,
-		DateMake:       dateMake,
-		DateUpdate:     dateUpdate,
-		TekananDarah:   req.TekananDarah,
-		DenyutNadi:     req.DenyutNadi,
-		SuhuTubuh:      req.SuhuTubuh,
-		FrekuensiNapas: req.FrekuensiNapas,
-		BeratBadan:     req.BeratBadan,
-		TinggiBadan:    req.TinggiBadan,
-		Visible:        1,
-	}
-
-	if err := h.uc.Create(data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusCreated, gin.H{"message": "pemeriksaan vital created"})
-}
-
-// GetByID menangani GET /pemeriksaan_vital/:id
-func (h *Handler) GetByID(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	data, err := h.uc.GetByID(id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if data == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
-	}
-	resp := PemeriksaanVitalResponse{
-		ID:             data.ID,
-		IDPasien:       data.IDPasien,
-		IDDokter:       data.IDDokter,
-		DateMake:       data.DateMake,
-		DateUpdate:     data.DateUpdate,
-		TekananDarah:   data.TekananDarah,
-		DenyutNadi:     data.DenyutNadi,
-		SuhuTubuh:      data.SuhuTubuh,
-		FrekuensiNapas: data.FrekuensiNapas,
-		BeratBadan:     data.BeratBadan,
-		TinggiBadan:    data.TinggiBadan,
-		Visible:        data.Visible,
-		NamaPasien:     data.NamaPasien,
-		NamaDokter:     data.NamaDokter,
-	}
-	c.JSON(http.StatusOK, resp)
 }
 
 // GetAll menangani GET /pemeriksaan_vital
@@ -151,75 +62,110 @@ func (h *Handler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// Update menangani PATCH /pemeriksaan_vital/:id
-func (h *Handler) Update(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+// GetAllB menangani GET /pemeriksaan_vital/b (data dari database rme-b)
+func (h *Handler) GetAllB(c *gin.Context) {
+	idPasienStr := c.Query("idPasien")
+	idDokterStr := c.Query("idDokter")
+	var idPasienPtr *int
+	var idDokterPtr *int
+	if idPasienStr != "" {
+		v, err := strconv.Atoi(idPasienStr)
+		if err == nil {
+			idPasienPtr = &v
+		}
+	}
+	if idDokterStr != "" {
+		v, err := strconv.Atoi(idDokterStr)
+		if err == nil {
+			idDokterPtr = &v
+		}
+	}
+
+	list, err := h.uc.GetAllB(idPasienPtr, idDokterPtr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-
-	var payload map[string]interface{}
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// handle date_update if provided as string
-	if v, ok := payload["date_update"].(string); ok && v != "" {
-		const layout = "2006-01-02 15:04:05"
-		if t, err := time.Parse(layout, v); err == nil {
-			payload["date_update"] = t
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid date_update format"})
-			return
-		}
-	} else {
-		payload["date_update"] = time.Now()
-	}
-
-	// Only allow certain fields
-	allowed := map[string]bool{
-		"tekanan_darah":   true,
-		"denyut_nadi":     true,
-		"suhu_tubuh":      true,
-		"frekuensi_napas": true,
-		"berat_badan":     true,
-		"tinggi_badan":    true,
-		"date_update":     true,
-		"id_dokter":       true,
-	}
-	updates := make(map[string]interface{})
-	for k, v := range payload {
-		if allowed[k] {
-			updates[k] = v
-		}
-	}
-	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no updatable fields provided"})
-		return
-	}
-
-	if err := h.uc.Update(id, updates); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "updated"})
+	resp := make([]PemeriksaanVitalBResponse, 0, len(list))
+	for _, d := range list {
+		resp = append(resp, PemeriksaanVitalBResponse{
+			Source:           "rsB",
+			ID:               d.ID,
+			IDPasien:         d.IDPasien,
+			IDDokter:         d.IDDokter,
+			DateMake:         d.DateMake,
+			DateUpdate:       d.DateUpdate,
+			TekananDarah:     d.TekananDarah,
+			DenyutNadi:       d.DenyutNadi,
+			SuhuTubuh:        d.SuhuTubuh,
+			FrekuensiNapas:   d.FrekuensiNapas,
+			BeratBadan:       d.BeratBadan,
+			TinggiBadan:      d.TinggiBadan,
+			SaturasiOksigen:  d.SaturasiOksigen,
+			TingkatKesadaran: d.TingkatKesadaran,
+			IndeksMasaTubuh:  d.IndeksMasaTubuh,
+			Visible:          d.Visible,
+			NamaPasien:       d.NamaPasien,
+			NamaDokter:       d.NamaDokter,
+		})
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
-// Hide menangani PATCH /pemeriksaan_vital/:id/hide
-func (h *Handler) Hide(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+// ETLToWarehouse menangani POST /pemeriksaan_vital/etl
+// Menarik data dari rsA dan rsB lalu menyimpan ke database `data_warehouse`.
+func (h *Handler) ETLToWarehouse(c *gin.Context) {
+	res, err := h.uc.ETLToWarehouse()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	updates := map[string]interface{}{"visible": 0, "date_update": time.Now()}
-	if err := h.uc.Update(id, updates); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "hidden"})
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "etl completed",
+		"inserted_rs_a": res.InsertedRSA,
+		"inserted_rs_b": res.InsertedRSB,
+	})
+}
+
+// GetWarehouse menangani GET /pemeriksaan_vital/warehouse
+// Mengambil data hasil ETL dari database `data_warehouse`.
+// Optional: filter berdasarkan NIK.
+func (h *Handler) GetWarehouse(c *gin.Context) {
+	nik := c.Query("NIK")
+	var nikPtr *string
+	if nik != "" {
+		n := nik
+		nikPtr = &n
+	}
+
+	list, err := h.uc.GetAllWarehouse(nikPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rows := make([]PemeriksaanVitalWarehouseResponse, 0, len(list))
+	for _, d := range list {
+		rows = append(rows, PemeriksaanVitalWarehouseResponse{
+			Source:             d.Source,
+			IDPemeriksaanVital: d.IDPemeriksaanVital,
+			IDPasien:           d.IDPasien,
+			NamaPasien:         d.NamaPasien,
+			DateMake:           d.DateMake,
+			DateUpdate:         d.DateUpdate,
+			TekananDarah:       d.TekananDarah,
+			DenyutNadi:         d.DenyutNadi,
+			SuhuTubuh:          d.SuhuTubuh,
+			FrekuensiNapas:     d.FrekuensiNapas,
+			BeratBadan:         d.BeratBadan,
+			TinggiBadan:        d.TinggiBadan,
+			SaturasiOksigen:    d.SaturasiOksigen,
+			TingkatKesadaran:   d.TingkatKesadaran,
+			IndeksMasaTubuh:    d.IndeksMasaTubuh,
+			Visible:            d.Visible,
+		})
+	}
+
+	c.JSON(http.StatusOK, GetWarehouseResponse{Data: rows})
 }
