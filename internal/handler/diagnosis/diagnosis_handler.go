@@ -161,6 +161,119 @@ func (h *Handler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, respList)
 }
 
+func (h *Handler) GetAllB(c *gin.Context) {
+	// support optional query params: idDokter and idPasien
+	var idDokterPtr *int
+	var idPasienPtr *int
+	idDokterStr := c.Query("idDokter")
+	idPasienStr := c.Query("idPasien")
+	if idDokterStr != "" {
+		idd, err := strconv.Atoi(idDokterStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid idDokter"})
+			return
+		}
+		idDokterPtr = &idd
+	}
+	if idPasienStr != "" {
+		idp, err := strconv.Atoi(idPasienStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid idPasien"})
+			return
+		}
+		idPasienPtr = &idp
+	}
+
+	list, err := h.uc.GetAllB(idDokterPtr, idPasienPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	respList := make([]DiagnosisResponseWithSource, 0, len(list))
+	for _, d := range list {
+		dr := DiagnosisResponseWithSource{
+			Source:           "rsB",
+			IDDiagnosis:      d.IDDiagnosis,
+			IDPasien:         d.IDPasien,
+			IDDokter:         d.IDDokter,
+			Tanggal:          d.Tanggal,
+			DiagnosisUtama:   DiagnosisCodeResponse{KodeIcd: d.KodeIcdUtama, Nama: d.NamaIcdUtama},
+			DiagnosisBanding: d.DiagnosisBanding,
+			Status:           d.Status,
+			DasarDiagnosis:   d.DasarDiagnosis,
+			Catatan:          d.Catatan,
+		}
+		for i, code := range d.KodeIcdSekunder {
+			name := ""
+			if i < len(d.NamaIcdSekunder) {
+				name = d.NamaIcdSekunder[i]
+			}
+			dr.DiagnosisSekunder = append(dr.DiagnosisSekunder, DiagnosisCodeResponse{KodeIcd: code, Nama: name})
+		}
+		respList = append(respList, dr)
+	}
+	c.JSON(http.StatusOK, respList)
+}
+
+// ETLToWarehouse POST /diagnosis/etl
+func (h *Handler) ETLToWarehouse(c *gin.Context) {
+	res, err := h.uc.ETLToWarehouse()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "etl completed",
+		"inserted_rs_a": res.InsertedRSA,
+		"inserted_rs_b": res.InsertedRSB,
+	})
+}
+
+// GetWarehouse GET /diagnosis/warehouse
+// Optional: ?NIK=...
+func (h *Handler) GetWarehouse(c *gin.Context) {
+	nik := c.Query("NIK")
+	var nikPtr *string
+	if nik != "" {
+		n := nik
+		nikPtr = &n
+	}
+
+	list, err := h.uc.GetAllWarehouse(nikPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	respList := make([]DiagnosisResponseWithSource, 0, len(list))
+	for _, w := range list {
+		d := &w.Diagnosis
+		dr := DiagnosisResponseWithSource{
+			Source:           w.Source,
+			IDDiagnosis:      d.IDDiagnosis,
+			IDPasien:         d.IDPasien,
+			IDDokter:         d.IDDokter,
+			NamaPasien:       w.NamaPasien,
+			Tanggal:          d.Tanggal,
+			DiagnosisUtama:   DiagnosisCodeResponse{KodeIcd: d.KodeIcdUtama, Nama: d.NamaIcdUtama},
+			DiagnosisBanding: d.DiagnosisBanding,
+			Status:           d.Status,
+			DasarDiagnosis:   d.DasarDiagnosis,
+			Catatan:          d.Catatan,
+		}
+		for i, code := range d.KodeIcdSekunder {
+			name := ""
+			if i < len(d.NamaIcdSekunder) {
+				name = d.NamaIcdSekunder[i]
+			}
+			dr.DiagnosisSekunder = append(dr.DiagnosisSekunder, DiagnosisCodeResponse{KodeIcd: code, Nama: name})
+		}
+		respList = append(respList, dr)
+	}
+
+	c.JSON(http.StatusOK, GetWarehouseResponse{Data: respList})
+}
+
 func (h *Handler) Update(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)

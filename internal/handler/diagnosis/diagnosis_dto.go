@@ -45,3 +45,22 @@ type DiagnosisCodeResponse struct {
 	KodeIcd string `json:"kode_icd"`
 	Nama    string `json:"nama"`
 }
+
+type DiagnosisResponseWithSource struct {
+	Source            string                  `json:"source"`
+	IDDiagnosis       int                     `json:"id_diagnosis"`
+	IDPasien          int                     `json:"id_pasien"`
+	IDDokter          int                     `json:"id_dokter"`
+	NamaPasien        *string                 `json:"nama_pasien,omitempty"`
+	Tanggal           time.Time               `json:"tanggal"`
+	DiagnosisUtama    DiagnosisCodeResponse   `json:"diagnosis_utama"`
+	DiagnosisSekunder []DiagnosisCodeResponse `json:"diagnosis_sekunder"`
+	DiagnosisBanding  []string                `json:"diagnosis_banding"`
+	Status            string                  `json:"status"`
+	DasarDiagnosis    []string                `json:"dasar_diagnosis"`
+	Catatan           string                  `json:"catatan"`
+}
+
+type GetWarehouseResponse struct {
+	Data []DiagnosisResponseWithSource `json:"data"`
+}

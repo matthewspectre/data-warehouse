@@ -17,3 +17,9 @@ type Diagnosis struct {
 	Catatan          string
 	Visible          int
 }
+
+type DiagnosisWarehouse struct {
+	Source     string
+	NamaPasien *string
+	Diagnosis
+}

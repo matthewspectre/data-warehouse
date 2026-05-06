@@ -140,6 +140,9 @@ func RegisterLokalisBedahRoutes(r *gin.Engine, handler *hlok.Handler) {
 func RegisterDiagnosisRoutes(r *gin.Engine, handler *hdiag.Handler) {
 	group := r.Group("/diagnosis")
 	group.POST("/", handler.Create)
+	group.GET("/b", handler.GetAllB)
+	group.GET("/warehouse", handler.GetWarehouse)
+	group.POST("/etl", handler.ETLToWarehouse)
 	group.GET("/:id", handler.GetByID)
 	group.GET("/", handler.GetAll)
 	group.PATCH(":id", handler.Update)
