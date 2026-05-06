@@ -1,16 +1,19 @@
 package pemeriksaan_laboratorium
 
 import (
-	entity "rme/internal/entity/pemeriksaan_laboratorium"
 	repo "rme/internal/repository/pemeriksaan_laboratorium"
 )
 
 type Usecase interface {
-	Create(p *entity.PemeriksaanLaboratorium) (int, error)
 	GetAll(idPasien *int, idDokter *int) ([]*repo.PemeriksaanLaboratoriumWithNames, error)
-	GetByID(id int) (*repo.PemeriksaanLaboratoriumWithNames, error)
-	Update(id int, updates map[string]interface{}) (*repo.PemeriksaanLaboratoriumWithNames, error)
-	Delete(id int) error
+	GetAllB(idPasien *int, idDokter *int) ([]*repo.PemeriksaanLaboratoriumWithNamesB, error)
+	GetAllWarehouse(nik *string) ([]*repo.PemeriksaanLaboratoriumWarehouse, error)
+	ETLToWarehouse() (ETLResult, error)
+}
+
+type ETLResult struct {
+	InsertedRSA int64
+	InsertedRSB int64
 }
 
 type usecase struct {
@@ -21,22 +24,36 @@ func NewUsecase(r repo.Repository) Usecase {
 	return &usecase{repo: r}
 }
 
-func (u *usecase) Create(p *entity.PemeriksaanLaboratorium) (int, error) {
-	return u.repo.Create(p)
-}
-
 func (u *usecase) GetAll(idPasien *int, idDokter *int) ([]*repo.PemeriksaanLaboratoriumWithNames, error) {
 	return u.repo.GetAll(idPasien, idDokter)
 }
 
-func (u *usecase) GetByID(id int) (*repo.PemeriksaanLaboratoriumWithNames, error) {
-	return u.repo.GetByID(id)
+func (u *usecase) GetAllB(idPasien *int, idDokter *int) ([]*repo.PemeriksaanLaboratoriumWithNamesB, error) {
+	return u.repo.GetAllB(idPasien, idDokter)
 }
 
-func (u *usecase) Update(id int, updates map[string]interface{}) (*repo.PemeriksaanLaboratoriumWithNames, error) {
-	return u.repo.Update(id, updates)
+func (u *usecase) GetAllWarehouse(nik *string) ([]*repo.PemeriksaanLaboratoriumWarehouse, error) {
+	return u.repo.GetAllWarehouse(nik)
 }
 
-func (u *usecase) Delete(id int) error {
-	return u.repo.Delete(id)
+func (u *usecase) ETLToWarehouse() (ETLResult, error) {
+	rsA, err := u.repo.GetAll(nil, nil)
+	if err != nil {
+		return ETLResult{}, err
+	}
+	rsB, err := u.repo.GetAllB(nil, nil)
+	if err != nil {
+		return ETLResult{}, err
+	}
+
+	insertedA, err := u.repo.UpsertWarehouseA(rsA)
+	if err != nil {
+		return ETLResult{}, err
+	}
+	insertedB, err := u.repo.UpsertWarehouseB(rsB)
+	if err != nil {
+		return ETLResult{}, err
+	}
+
+	return ETLResult{InsertedRSA: insertedA, InsertedRSB: insertedB}, nil
 }

@@ -95,12 +95,10 @@ func RegisterPemeriksaanVitalRoutes(r *gin.Engine, handler *hpv.Handler) {
 // RegisterPemeriksaanLaboratoriumRoutes mendaftarkan endpoint /pemeriksaan_laboratorium
 func RegisterPemeriksaanLaboratoriumRoutes(r *gin.Engine, handler *hpl.Handler) {
 	group := r.Group("/pemeriksaan_laboratorium")
-	group.POST("/", handler.Create)
 	group.GET("/", handler.GetAll)
-	group.GET("/:id", handler.GetByID)
-	group.PATCH("/:id", handler.Update)
-	group.DELETE("/:id", handler.Delete)
-	group.PATCH("/:id/hide", handler.Hide)
+	group.GET("/b", handler.GetAllB)
+	group.GET("/warehouse", handler.GetWarehouse)
+	group.POST("/etl", handler.ETLToWarehouse)
 }
 
 // RegisterPemeriksaanEkgRoutes mendaftarkan endpoint /pemeriksaan_ekg
