@@ -129,6 +129,9 @@ func RegisterTatalaksanaRoutes(r *gin.Engine, handler *hta.Handler) {
 // RegisterLokalisBedahRoutes mendaftarkan endpoint /lokalis_bedah
 func RegisterLokalisBedahRoutes(r *gin.Engine, handler *hlok.Handler) {
 	group := r.Group("/lokalis_bedah")
+	group.GET("/b", handler.GetAllB)
+	group.GET("/warehouse", handler.GetWarehouse)
+	group.POST("/etl", handler.ETLToWarehouse)
 	group.GET("/", handler.GetAll)
 }
 

@@ -20,3 +20,9 @@ type LokalisBedah struct {
 	Visible        int
 	NamaPasien     string
 }
+
+type LokalisBedahWarehouse struct {
+	Source     string
+	NamaPasien *string
+	LokalisBedah
+}
