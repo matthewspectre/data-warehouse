@@ -129,11 +129,7 @@ func RegisterTatalaksanaRoutes(r *gin.Engine, handler *hta.Handler) {
 // RegisterLokalisBedahRoutes mendaftarkan endpoint /lokalis_bedah
 func RegisterLokalisBedahRoutes(r *gin.Engine, handler *hlok.Handler) {
 	group := r.Group("/lokalis_bedah")
-	group.POST("/", handler.Create)
-	group.GET("/:id", handler.GetByID)
 	group.GET("/", handler.GetAll)
-	group.PATCH(":id", handler.Update)
-	group.PATCH("/:id/hide", handler.Hide)
 }
 
 // RegisterDiagnosisRoutes mendaftarkan endpoint /diagnosis
