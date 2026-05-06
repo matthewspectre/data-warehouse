@@ -1,13 +1,7 @@
 package pemeriksaan_ekg
 
-import "rme/internal/entity/pemeriksaan_ekg"
-
 type Repository interface {
-	Create(p *pemeriksaan_ekg.PemeriksaanEkg) (int, error)
 	GetAll(idPasien *int, idDokter *int) ([]*PemeriksaanEkgWithNames, error)
-	GetByID(id int) (*PemeriksaanEkgWithNames, error)
-	Update(id int, updates map[string]interface{}) (*PemeriksaanEkgWithNames, error)
-	Delete(id int) error
 }
 
 type PemeriksaanEkgWithNames struct {
