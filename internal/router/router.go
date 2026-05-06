@@ -105,6 +105,9 @@ func RegisterPemeriksaanLaboratoriumRoutes(r *gin.Engine, handler *hpl.Handler) 
 func RegisterPemeriksaanEkgRoutes(r *gin.Engine, handler *hpe.Handler) {
 	group := r.Group("/pemeriksaan_ekg")
 	group.GET("/", handler.GetAll)
+	group.GET("/b", handler.GetAllB)
+	group.GET("/warehouse", handler.GetWarehouse)
+	group.POST("/etl", handler.ETLToWarehouse)
 }
 
 // RegisterICDRoutes mendaftarkan endpoint /icd10
