@@ -42,6 +42,8 @@ func (h *Handler) Create(c *gin.Context) {
 		IDPasien:      req.IDPasien,
 		IDDokter:      req.IDDokter,
 		Tanggal:       tanggal,
+		DateMake:      tanggal,
+		DateUpdate:    tanggal,
 		GangguanBAB:   req.GangguanBAB,
 		GangguanBAK:   req.GangguanBAK,
 		MualMuntah:    req.MualMuntah,
@@ -49,6 +51,9 @@ func (h *Handler) Create(c *gin.Context) {
 		Perdarahan:    req.Perdarahan,
 		PenurunanBB:   req.PenurunanBB,
 		GangguanGerak: req.GangguanGerak,
+		Nyeri:         req.Nyeri,
+		SesakNapas:    req.SesakNapas,
+		Pusing:        req.Pusing,
 		Catatan:       req.Catatan,
 		Visible:       1,
 	}
@@ -90,6 +95,9 @@ func (h *Handler) GetByID(c *gin.Context) {
 		Perdarahan:    d.Perdarahan,
 		PenurunanBB:   d.PenurunanBB,
 		GangguanGerak: d.GangguanGerak,
+		Nyeri:         d.Nyeri,
+		SesakNapas:    d.SesakNapas,
+		Pusing:        d.Pusing,
 		Catatan:       d.Catatan,
 	}
 	c.JSON(http.StatusOK, resp)
@@ -136,10 +144,127 @@ func (h *Handler) GetAll(c *gin.Context) {
 			Perdarahan:    d.Perdarahan,
 			PenurunanBB:   d.PenurunanBB,
 			GangguanGerak: d.GangguanGerak,
+			Nyeri:         d.Nyeri,
+			SesakNapas:    d.SesakNapas,
+			Pusing:        d.Pusing,
 			Catatan:       d.Catatan,
 		})
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+// GetAllB menangani GET /pemeriksaan_fungsi_organ/b (data dari database rme-b)
+func (h *Handler) GetAllB(c *gin.Context) {
+	var idDokterPtr *int
+	var idPasienPtr *int
+	idDokterStr := c.Query("idDokter")
+	idPasienStr := c.Query("idPasien")
+	if idDokterStr != "" {
+		idd, err := strconv.Atoi(idDokterStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid idDokter"})
+			return
+		}
+		idDokterPtr = &idd
+	}
+	if idPasienStr != "" {
+		idp, err := strconv.Atoi(idPasienStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid idPasien"})
+			return
+		}
+		idPasienPtr = &idp
+	}
+
+	list, err := h.uc.GetAllB(idDokterPtr, idPasienPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	resp := make([]PemeriksaanFungsiOrganBResponse, 0, len(list))
+	for _, d := range list {
+		resp = append(resp, PemeriksaanFungsiOrganBResponse{
+			Source:        "rsB",
+			ID:            d.ID,
+			IDPasien:      d.IDPasien,
+			IDDokter:      d.IDDokter,
+			Tanggal:       d.Tanggal.Format(time.RFC3339),
+			GangguanBAB:   d.GangguanBAB,
+			GangguanBAK:   d.GangguanBAK,
+			MualMuntah:    d.MualMuntah,
+			Demam:         d.Demam,
+			Perdarahan:    d.Perdarahan,
+			PenurunanBB:   d.PenurunanBB,
+			GangguanGerak: d.GangguanGerak,
+			Nyeri:         d.Nyeri,
+			SesakNapas:    d.SesakNapas,
+			Pusing:        d.Pusing,
+			Catatan:       d.Catatan,
+		})
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// ETLToWarehouse menangani POST /pemeriksaan_fungsi_organ/etl
+// Menarik data dari rsA dan rsB lalu menyimpan ke database `data_warehouse`.
+func (h *Handler) ETLToWarehouse(c *gin.Context) {
+	res, err := h.uc.ETLToWarehouse()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "etl completed",
+		"inserted_rs_a": res.InsertedRSA,
+		"inserted_rs_b": res.InsertedRSB,
+	})
+}
+
+// GetWarehouse menangani GET /pemeriksaan_fungsi_organ/warehouse
+// Mengambil data hasil ETL dari database `data_warehouse`.
+// Optional: filter berdasarkan NIK.
+func (h *Handler) GetWarehouse(c *gin.Context) {
+	nik := c.Query("NIK")
+	var nikPtr *string
+	if nik != "" {
+		n := nik
+		nikPtr = &n
+	}
+
+	list, err := h.uc.GetAllWarehouse(nikPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rows := make([]PemeriksaanFungsiOrganWarehouseResponse, 0, len(list))
+	for _, d := range list {
+		rows = append(rows, PemeriksaanFungsiOrganWarehouseResponse{
+			Source:                   d.Source,
+			IDPemeriksaanFungsiOrgan: d.IDPemeriksaanFungsiOrgan,
+			IDPasien:                 d.IDPasien,
+			NamaPasien:               d.NamaPasien,
+			IDDokter:                 d.IDDokter,
+			Tanggal:                  d.Tanggal.Format(time.RFC3339),
+			DateMake:                 d.DateMake.Format(time.RFC3339),
+			DateUpdate:               d.DateUpdate.Format(time.RFC3339),
+			GangguanBAB:              d.GangguanBAB,
+			GangguanBAK:              d.GangguanBAK,
+			MualMuntah:               d.MualMuntah,
+			Demam:                    d.Demam,
+			Perdarahan:               d.Perdarahan,
+			PenurunanBB:              d.PenurunanBB,
+			GangguanGerak:            d.GangguanGerak,
+			Nyeri:                    d.Nyeri,
+			SesakNapas:               d.SesakNapas,
+			Pusing:                   d.Pusing,
+			Catatan:                  d.Catatan,
+			Visible:                  d.Visible,
+		})
+	}
+
+	c.JSON(http.StatusOK, GetWarehouseResponse{Data: rows})
 }
 
 // Update handles PATCH /pemeriksaan_fungsi_organ/:id
@@ -183,6 +308,9 @@ func (h *Handler) Update(c *gin.Context) {
 		"perdarahan":     true,
 		"penurunan_bb":   true,
 		"gangguan_gerak": true,
+		"nyeri":          true,
+		"sesak_napas":    true,
+		"pusing":         true,
 		"catatan":        true,
 		"date_update":    true,
 	}

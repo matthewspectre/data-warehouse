@@ -153,6 +153,9 @@ func RegisterDiagnosisRoutes(r *gin.Engine, handler *hdiag.Handler) {
 func RegisterPemeriksaanFungsiOrganRoutes(r *gin.Engine, handler *hpfo.Handler) {
 	group := r.Group("/pemeriksaan_fungsi_organ")
 	group.POST("/", handler.Create)
+	group.GET("/b", handler.GetAllB)
+	group.GET("/warehouse", handler.GetWarehouse)
+	group.POST("/etl", handler.ETLToWarehouse)
 	group.GET("/:id", handler.GetByID)
 	group.GET("/", handler.GetAll)
 	group.PATCH("/:id", handler.Update)
