@@ -19,3 +19,23 @@ type PemeriksaanPenunjangBedah struct {
 	DateMake      time.Time
 	DateUpdate    time.Time
 }
+
+type PemeriksaanPenunjangBedahWarehouse struct {
+	Source                      string
+	IDPemeriksaanPenunjangBedah int
+	IDPasien                    int
+	NamaPasien                  *string
+	IDDokter                    int
+	ButuhUSG                    bool
+	ButuhRontgen                bool
+	ButuhCTScan                 bool
+	ButuhBiopsi                 bool
+	StatusOperasi               string
+	JenisTindakan               string
+	Prioritas                   string
+	CatatanBedah                string
+	JadwalBedah                 time.Time
+	Visible                     int
+	DateMake                    time.Time
+	DateUpdate                  time.Time
+}

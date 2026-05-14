@@ -142,6 +142,122 @@ func (h *Handler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetAllB menangani GET /pemeriksaan_penunjang_bedah/b (data dari database rme-b)
+func (h *Handler) GetAllB(c *gin.Context) {
+	var idDokterPtr *int
+	var idPasienPtr *int
+	idDokterStr := c.Query("idDokter")
+	idPasienStr := c.Query("idPasien")
+	if idDokterStr != "" {
+		idd, err := strconv.Atoi(idDokterStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid idDokter"})
+			return
+		}
+		idDokterPtr = &idd
+	}
+	if idPasienStr != "" {
+		idp, err := strconv.Atoi(idPasienStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid idPasien"})
+			return
+		}
+		idPasienPtr = &idp
+	}
+
+	list, err := h.uc.GetAllB(idDokterPtr, idPasienPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	resp := make([]PemeriksaanPenunjangBedahBResponse, 0, len(list))
+	for _, d := range list {
+		jadwal := ""
+		if !d.JadwalBedah.IsZero() {
+			jadwal = d.JadwalBedah.Format(time.RFC3339)
+		}
+		resp = append(resp, PemeriksaanPenunjangBedahBResponse{
+			Source:        "rsB",
+			ID:            d.ID,
+			IDPasien:      d.IDPasien,
+			IDDokter:      d.IDDokter,
+			ButuhUSG:      d.ButuhUSG,
+			ButuhRontgen:  d.ButuhRontgen,
+			ButuhCTScan:   d.ButuhCTScan,
+			ButuhBiopsi:   d.ButuhBiopsi,
+			StatusOperasi: d.StatusOperasi,
+			JenisTindakan: d.JenisTindakan,
+			Prioritas:     d.Prioritas,
+			CatatanBedah:  d.CatatanBedah,
+			JadwalBedah:   jadwal,
+		})
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// ETLToWarehouse menangani POST /pemeriksaan_penunjang_bedah/etl
+// Menarik data dari rsA dan rsB lalu menyimpan ke database `data_warehouse`.
+func (h *Handler) ETLToWarehouse(c *gin.Context) {
+	res, err := h.uc.ETLToWarehouse()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "etl completed",
+		"inserted_rs_a": res.InsertedRSA,
+		"inserted_rs_b": res.InsertedRSB,
+	})
+}
+
+// GetWarehouse menangani GET /pemeriksaan_penunjang_bedah/warehouse
+// Mengambil data hasil ETL dari database `data_warehouse`.
+// Optional: filter berdasarkan NIK.
+func (h *Handler) GetWarehouse(c *gin.Context) {
+	nik := c.Query("NIK")
+	var nikPtr *string
+	if nik != "" {
+		n := nik
+		nikPtr = &n
+	}
+
+	list, err := h.uc.GetAllWarehouse(nikPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rows := make([]PemeriksaanPenunjangBedahWarehouseResponse, 0, len(list))
+	for _, d := range list {
+		jadwal := ""
+		if !d.JadwalBedah.IsZero() {
+			jadwal = d.JadwalBedah.Format(time.RFC3339)
+		}
+		rows = append(rows, PemeriksaanPenunjangBedahWarehouseResponse{
+			Source:                      d.Source,
+			IDPemeriksaanPenunjangBedah: d.IDPemeriksaanPenunjangBedah,
+			IDPasien:                    d.IDPasien,
+			NamaPasien:                  d.NamaPasien,
+			IDDokter:                    d.IDDokter,
+			ButuhUSG:                    d.ButuhUSG,
+			ButuhRontgen:                d.ButuhRontgen,
+			ButuhCTScan:                 d.ButuhCTScan,
+			ButuhBiopsi:                 d.ButuhBiopsi,
+			StatusOperasi:               d.StatusOperasi,
+			JenisTindakan:               d.JenisTindakan,
+			Prioritas:                   d.Prioritas,
+			CatatanBedah:                d.CatatanBedah,
+			JadwalBedah:                 jadwal,
+			Visible:                     d.Visible,
+			DateMake:                    d.DateMake.Format(time.RFC3339),
+			DateUpdate:                  d.DateUpdate.Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(http.StatusOK, GetWarehouseResponse{Data: rows})
+}
+
 // Update supports partial updates
 func (h *Handler) Update(c *gin.Context) {
 	idStr := c.Param("id")
